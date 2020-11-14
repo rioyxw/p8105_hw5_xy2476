@@ -111,10 +111,38 @@ path_df =
   ) %>% 
   mutate(
     path = str_c("lda_data/", path),
-    data = map(.x = path, ~read_csv(.x)))
-
-read_csv(path_df$path[[1]])
+    data = map(.x = path, ~read_csv(.x)),
+    ) %>% 
+  separate(path, into = c("cut", "path"), sep = "/") %>%
+  separate(path, into = c("control_arm", "subject_id")) %>% ####warning message???
+  select(-cut) %>% 
+  unnest(data)
 ```
+
+plot
+```{r}
+path_df_graph =
+  path_df %>% 
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week_num",
+    values_to = "value"
+  ) 
+
+path_df_graph %>% 
+  ggplot(aes(x = week_num, y = value, 
+             group = subject_id, color = factor(subject_id))) +
+  geom_line() + geom_point() +
+  facet_grid(. ~ control_arm) +
+  labs(title = "Observations on each subject between two groups",
+       x = "Week Number",
+       y = "Value") +
+  guides(color = guide_legend(title = "Subject ID")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Comment on the differences between groups:
+overall the graph shows that experimental group has higher value than control group, both from the start and in the end. 
 
 
 
