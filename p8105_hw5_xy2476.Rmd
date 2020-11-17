@@ -111,11 +111,12 @@ path_df =
   mutate(
     path = str_c("lda_data/", path),
     data = map(.x = path, ~read_csv(.x)),
-    ) %>% 
-  separate(path, into = c("cut", "path"), sep = "/") %>%
-  separate(path, into = c("control_arm", "subject_id")) %>% ####warning message???
+    path = str_remove(path, ".csv")) %>% 
+  separate(path, into = c("cut", "path"), sep = "/") %>%  
+  separate(path, into = c("control_arm", "subject_id"), sep = c("_")) %>% 
   select(-cut) %>% 
   unnest(data)
+
 ```
 
 plot
@@ -139,7 +140,6 @@ path_df_graph %>%
   labs(title = "Observations on each subject between two groups",
        x = "Week Number",
        y = "Value") +
-  guides(color = guide_legend(title = "Subject ID")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -159,22 +159,68 @@ sim_mean_sd = function(n, mu, sigma = 5) {
   ) 
   
   sim_data %>% 
-    t.test(mu = mu) %>% 
+    t.test() %>% 
     broom::tidy() %>% 
     select(estimate, p.value)
   
 }
 
-
 sim_results = 
   tibble(mu_list = c(0, 1, 2, 3, 4, 5, 6)) %>% 
   mutate(
-    output_lists = map(.x = mu_list, ~rerun(5, sim_mean_sd(mu = .x))),
-    estimate_dfs = map(output_lists, bind_rows)) %>% 
-    print(estimate_dfs) %>% 
-    unnest(estimate_dfs)
-
+    output_lists = map(.x = mu_list, ~rerun(5000, sim_mean_sd(n = 30, mu = .x))), 
+    estimate_dfs = map(output_lists, bind_rows)) %>%
+    unnest(estimate_dfs) %>% 
+  select(-output_lists)
 ```
+
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis. Describe the association between effect size and power.
+```{r}
+reject_table = 
+  sim_results %>% 
+  mutate(
+    decision = 
+      case_when(
+        p.value >= 0.05 ~ "fail to reject",
+        p.value < 0.05 ~ "reject"
+      )) %>% 
+  group_by(decision, mu_list) %>% 
+  summarize(
+    count = n()
+  ) %>% 
+  filter(decision == "reject") %>% 
+  mutate(
+    prop_reject = count / 5000)
+
+
+
+
+prop_data1 = 
+  left_join(sim_results, reject_table, by = "mu_list")
+  
+
+prop_data1 %>% 
+  ggplot(aes(x = mu_list, y = prop_reject, color = decision)) +
+  geom_point() + geom_line()
+```
+
+
+```{r}
+mean_table = 
+  sim_results %>% 
+  group_by(mu_list) %>% 
+  summarize(mean_mu = mean(estimate))
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
