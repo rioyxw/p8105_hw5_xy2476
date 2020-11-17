@@ -97,7 +97,6 @@ results_df %>%
 
 ## Problem 2
 
-
 import one dataset 
 
 ```{r}
@@ -127,11 +126,14 @@ path_df_graph =
     week_1:week_8,
     names_to = "week_num",
     values_to = "value"
-  ) 
+  ) %>% 
+  mutate(
+    control_arm = recode_factor(control_arm,"con" = "control", "exp" = "experiment")
+  )
 
 path_df_graph %>% 
   ggplot(aes(x = week_num, y = value, 
-             group = subject_id, color = factor(subject_id))) +
+             group = subject_id, color = factor(control_arm))) +
   geom_line() + geom_point() +
   facet_grid(. ~ control_arm) +
   labs(title = "Observations on each subject between two groups",
@@ -150,22 +152,27 @@ overall the graph shows that experimental group has higher value than control gr
 ```{r}
 set.seed(1)
 
-sim_mean_sd = function(n, mu = 0, sigma = 5) {
+sim_mean_sd = function(n, mu, sigma = 5) {
   
   sim_data = tibble(
-    x = rnorm(n, mean = mu, sd = sigma)
+    x = rnorm(n = 30, mean = mu, sd = sigma)
   ) 
   
   sim_data %>% 
-    t.test(mu = 0) %>% 
+    t.test(mu = mu) %>% 
     broom::tidy() %>% 
     select(estimate, p.value)
   
 }
 
-output = vector("list", 100)
 
-sim_result = rerun(100, sim_mean_sd(30, 0, 5)) %>% bind_rows()
+sim_results = 
+  tibble(mu_list = c(0, 1, 2, 3, 4, 5, 6)) %>% 
+  mutate(
+    output_lists = map(.x = mu_list, ~rerun(5, sim_mean_sd(mu = .x))),
+    estimate_dfs = map(output_lists, bind_rows)) %>% 
+    print(estimate_dfs) %>% 
+    unnest(estimate_dfs)
 
 ```
 
