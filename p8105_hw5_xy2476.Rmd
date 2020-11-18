@@ -102,7 +102,7 @@ import one dataset
 data_1 = read_csv("lda_data/con_01.csv")
 ```
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 path_df = 
   tibble(
     path = list.files("lda_data"),
